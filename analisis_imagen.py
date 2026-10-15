@@ -1,7 +1,7 @@
 import base64
 from typing import Dict, List, Tuple
 
-from google.genai import Client
+from google.genai import Client, types
 
 
 class ImagenAnalisis:
@@ -56,7 +56,11 @@ def _parsear_seccion(texto: str, etiqueta: str) -> str:
 
 
 def _parsear_deteccion(texto: str) -> List[str]:
-    seccion = _parsear_seccion(texto, "DETECCIÓN") or _parsear_seccion(texto, "DETECCION") or _parsear_seccion(texto, "OBJETOS")
+    seccion = (
+        _parsear_seccion(texto, "DETECCIÓN")
+        or _parsear_seccion(texto, "DETECCION")
+        or _parsear_seccion(texto, "OBJETOS")
+    )
     if not seccion:
         return []
     items = []
@@ -76,8 +80,6 @@ def analizar_imagen_avanzado(
     modelo: str = "gemini-2.5-flash",
 ) -> ImagenAnalisis:
     """Analiza una imagen: OCR, descripción, clasificación, detección."""
-    import base64
-
     prompt = (
         "Analiza esta imagen con mucho detalle. "
         "Responde ÚNICAMENTE en español salvadoreño claro y en el siguiente formato:\n"
@@ -91,12 +93,8 @@ def analizar_imagen_avanzado(
     respuesta = cliente.models.generate_content(
         model=modelo,
         contents=[
-            {"type": "text", "text": prompt},
-            {
-                "type": "image",
-                "data": base64.b64encode(datos_imagen).decode("utf-8"),
-                "mime_type": tipo_mime,
-            },
+            types.Part(text=prompt),
+            types.Part.from_bytes(data=datos_imagen, mime_type=tipo_mime),
         ],
     )
 
@@ -127,8 +125,6 @@ def preguntar_sobre_imagen(
     modelo: str = "gemini-2.5-flash",
 ) -> ChatAnalisis:
     """Hace una pregunta específica sobre la imagen."""
-    import base64
-
     if not pregunta.strip():
         raise ValueError("La pregunta no puede estar vacía.")
 
@@ -140,12 +136,8 @@ def preguntar_sobre_imagen(
     respuesta = cliente.models.generate_content(
         model=modelo,
         contents=[
-            {"type": "text", "text": prompt},
-            {
-                "type": "image",
-                "data": base64.b64encode(datos_imagen).decode("utf-8"),
-                "mime_type": tipo_mime,
-            },
+            types.Part(text=prompt),
+            types.Part.from_bytes(data=datos_imagen, mime_type=tipo_mime),
         ],
     )
 

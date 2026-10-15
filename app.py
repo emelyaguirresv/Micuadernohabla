@@ -142,3 +142,68 @@ if apunte is not None:
         file_name="guia_de_estudio.md",
         mime="text/markdown",
     )
+
+
+# === ANÁLISIS AVANZADO DE IMÁGENES ===
+try:
+    from analisis_imagen import ImagenAnalisis, analizar_imagen_avanzado, preguntar_sobre_imagen
+except Exception:
+    ANALISIS_AVANZADO_DISPONIBLE = False
+else:
+    ANALISIS_AVANZADO_DISPONIBLE = True
+
+if ANALISIS_AVANZADO_DISPONIBLE:
+    with st.expander('Análisis de imagen (OCR + descripción + clasificación + detección + chat)', expanded=False):
+        st.write('Sube o toma una foto para analizarla con IA vision.')
+        tab_f, tab_s = st.tabs(['Tomar foto', 'Subir imagen'])
+        img_bytes = None; mime = None
+        with tab_f:
+            cam = st.camera_input('Fotografía la imagen')
+            if cam is not None:
+                img_bytes = cam.getvalue(); mime = cam.type or 'image/jpeg'
+        with tab_s:
+            upl = st.file_uploader('Elige una imagen', type=['png','jpg','jpeg','webp','bmp','gif','tiff'], key='avanzado')
+            if upl is not None:
+                img_bytes = upl.getvalue(); mime = upl.type or 'image/jpeg'
+        if img_bytes is not None and st.button('Analizar imagen completa'):
+            try:
+                with st.spinner('Analizando...'):
+                    cli = crear_cliente(llave_api)
+                    res = analizar_imagen_avanzado(img_bytes, mime, cli)
+                st.session_state['res_av'] = res
+                st.session_state['img_av'] = (img_bytes, mime)
+                st.success('Listo')
+            except Exception as e:
+                st.error(str(e))
+        sav = st.session_state.get('res_av')
+        iav = st.session_state.get('img_av')
+        if isinstance(sav, ImagenAnalisis) and sav.tiene_resultados:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.subheader('OCR')
+                if sav.ocr:
+                    st.text_area('Texto', sav.ocr, height=160, disabled=True)
+                else:
+                    st.caption('Sin texto visible')
+                st.subheader('Clasificación')
+                st.write(sav.clasificacion or '-')
+            with c2:
+                st.subheader('Descripción')
+                st.write(sav.descripcion or '-')
+                st.subheader('Detección')
+                if sav.deteccion:
+                    for x in sav.deteccion: st.markdown(f'- {x}')
+                else:
+                    st.caption('-')
+            st.subheader('Chat con la imagen')
+            if iav:
+                q = st.text_input('Pregunta', key='qav')
+                if st.button('Preguntar') and q.strip():
+                    try:
+                        with st.spinner('...'):
+                            c2c = crear_cliente(llave_api)
+                            rc = preguntar_sobre_imagen(iav[0], iav[1], q, c2c)
+                        st.write(rc.respuesta)
+                    except Exception as e:
+                        st.error(str(e))
+
